@@ -128,7 +128,9 @@ const translations = {
         noCustomerHistory: "No sales history for this customer.",
         customerPhone: "Customer Phone (Optional)",
         ownerName: "Owner Name",
-        loading: "Loading..."
+        loading: "Loading...",
+        or: "OR",
+        registerNow: "Register now"
     },
     hi: {
         dashboard: "डैशबोर्ड",
@@ -233,7 +235,9 @@ const translations = {
         noCustomerHistory: "इस ग्राहक के लिए कोई बिक्री इतिहास नहीं है।",
         customerPhone: "ग्राहक फोन (वैकल्पिक)",
         ownerName: "मालिक का नाम",
-        loading: "लोड हो रहा है..."
+        loading: "लोड हो रहा है...",
+        or: "या",
+        registerNow: "अभी पंजीकरण करें"
     },
     te: {
         dashboard: "డాష్‌బోర్డ్",
@@ -338,7 +342,9 @@ const translations = {
         noCustomerHistory: "ఈ కస్టమర్ కోసం అమ్మకాల చరిత్ర లేదు.",
         customerPhone: "కస్టమర్ ఫోన్ (ఐచ్ఛికం)",
         ownerName: "యజమాని పేరు",
-        loading: "లోడ్ అవుతోంది..."
+        loading: "లోడ్ అవుతోంది...",
+        or: "లేదా",
+        registerNow: "ఇప్పుడే నమోదు చేసుకోండి"
     }
 };
 
@@ -471,36 +477,82 @@ function toggleNotificationPanel() {
     panel.classList.toggle('show');
 }
 
-// Login functionality
+// Login/Register UI helpers
 function showLogin() {
+    document.getElementById('loginFormContainer').classList.remove('hidden');
+    document.getElementById('registerFormContainer').classList.add('hidden');
     document.getElementById('loginPage').style.display = 'flex';
     document.getElementById('mainApp').classList.add('hidden');
 }
 
-function hideLogin() {
+function showRegister() {
+    document.getElementById('loginFormContainer').classList.add('hidden');
+    document.getElementById('registerFormContainer').classList.remove('hidden');
+    document.getElementById('loginPage').style.display = 'flex';
+    document.getElementById('mainApp').classList.add('hidden');
+}
+
+function hideAuthPage() {
     document.getElementById('loginPage').style.display = 'none';
     document.getElementById('mainApp').classList.remove('hidden');
 }
 
-async function handleLogin(storeName, ownerName) {
+
+async function handleLogin(email, password) {
     try {
-        const userRef = firebase.doc(db, `artifacts/${appId}/users/${userId}`);
+        await firebase.signInWithEmailAndPassword(auth, email, password);
+        // The onAuthStateChanged listener will handle the rest.
+    } catch (error) {
+        console.error('Login error:', error);
+        showToast('Login failed. Please check your email and password.', 'error');
+        addNotification('error', 'Login Failed', error.message);
+    }
+}
+
+async function handleRegister(storeName, ownerName, email, password) {
+    try {
+        const userCredential = await firebase.createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        const userRef = firebase.doc(db, `artifacts/${appId}/users/${user.uid}`);
         await firebase.setDoc(userRef, {
             storeName: storeName,
             ownerName: ownerName,
             lastLogin: new Date().toISOString()
         }, { merge: true });
 
-        currentUser = { storeName, ownerName, userId };
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        
-        // UI will be updated by the onAuthStateChanged listener
-        showToast('Login successful!', 'success');
-        
+        showToast('Registration successful! You are now logged in.', 'success');
+        // The onAuthStateChanged listener will handle the UI update.
     } catch (error) {
-        console.error('Error logging in:', error);
-        showToast('Login failed. Please try again.', 'error');
-        addNotification('error', 'Login Error', 'Failed to save user data to the cloud.');
+        console.error('Registration error:', error);
+        let errorMessage = 'Registration failed.';
+        if (error.code === 'auth/email-already-in-use') {
+            errorMessage = 'The email address is already in use.';
+        } else if (error.code === 'auth/weak-password') {
+            errorMessage = 'The password is too weak. Please use a stronger password.';
+        }
+        showToast(errorMessage, 'error');
+        addNotification('error', 'Registration Failed', errorMessage);
+    }
+}
+
+async function handleSocialSignIn(providerName) {
+    try {
+        let provider;
+        if (providerName === 'google') {
+            provider = new firebase.GoogleAuthProvider();
+        } else if (providerName === 'facebook') {
+            provider = new firebase.FacebookAuthProvider();
+        }
+        
+        await firebase.signInWithPopup(auth, provider);
+        // The onAuthStateChanged listener will handle the rest.
+        showToast('Successfully signed in with ' + providerName, 'success');
+
+    } catch (error) {
+        console.error('Social sign-in error:', error);
+        showToast('Social sign-in failed. Please try again.', 'error');
+        addNotification('error', 'Sign-in Failed', error.message);
     }
 }
 
@@ -1928,31 +1980,23 @@ document.addEventListener('DOMContentLoaded', async function() {
         db = firebase.getFirestore(firebaseApp);
         auth = firebase.getAuth(firebaseApp);
 
-        // This promise and check at the end of the script were causing a race condition.
-        // We will now rely solely on the onAuthStateChanged listener to manage the UI flow.
-        
         firebase.onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // User is signed in.
                 userId = user.uid;
                 const userRef = firebase.doc(db, `artifacts/${appId}/users/${userId}`);
                 const userDoc = await firebase.getDoc(userRef);
                 
                 if (userDoc.exists()) {
-                    // Existing user with store info, show main app.
                     currentUser = userDoc.data();
                     localStorage.setItem('currentUser', JSON.stringify(currentUser));
                     document.getElementById('headerStoreName').textContent = currentUser.storeName;
-                    hideLogin();
+                    hideAuthPage();
                     showSection('dashboard');
                     addNotification('info', 'System Ready', 'Kirana Store Manager is ready to use');
                 } else {
-                    // New user, show login page to get store details.
                     showLogin();
                 }
             } else {
-                // User is not signed in.
-                // We will attempt to sign in anonymously or with a custom token.
                 if (initialAuthToken) {
                     try {
                         await firebase.signInWithCustomToken(auth, initialAuthToken);
@@ -1963,25 +2007,43 @@ document.addEventListener('DOMContentLoaded', async function() {
                 } else {
                     await firebase.signInAnonymously(auth);
                 }
-                // The onAuthStateChanged listener will be triggered again with the new user.
             }
         });
-        
-        // This part of the code now runs outside of the auth check.
-        // It's for setting up event listeners and initial UI elements that don't
-        // depend on the user's logged-in state.
         
         initTheme();
         initVoiceRecognition();
         updateConnectionStatus();
         updateLanguage();
         
+        // Event listeners for login/register forms and buttons
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const storeName = document.getElementById('storeNameLogin').value;
-            const ownerName = document.getElementById('ownerNameLogin').value;
-            handleLogin(storeName, ownerName);
+            const email = document.getElementById('emailLogin').value;
+            const password = document.getElementById('passwordLogin').value;
+            handleLogin(email, password);
         });
+
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const storeName = document.getElementById('storeNameRegister').value;
+            const ownerName = document.getElementById('ownerNameRegister').value;
+            const email = document.getElementById('emailRegister').value;
+            const password = document.getElementById('passwordRegister').value;
+            handleRegister(storeName, ownerName, email, password);
+        });
+
+        document.getElementById('showRegisterBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            showRegister();
+        });
+
+        document.getElementById('showLoginBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            showLogin();
+        });
+
+        document.getElementById('googleSignInBtn').addEventListener('click', () => handleSocialSignIn('google'));
+        document.getElementById('facebookSignInBtn').addEventListener('click', () => handleSocialSignIn('facebook'));
         
         document.getElementById('logoutBtn').addEventListener('click', handleLogout);
         document.getElementById('themeToggle').addEventListener('click', toggleTheme);
