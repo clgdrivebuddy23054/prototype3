@@ -494,14 +494,9 @@ async function handleLogin(storeName, ownerName) {
         currentUser = { storeName, ownerName, userId };
         localStorage.setItem('currentUser', JSON.stringify(currentUser));
         
-        document.getElementById('headerStoreName').textContent = storeName;
-        document.getElementById('storeNameInput').value = storeName;
-        document.getElementById('ownerNameInput').value = ownerName;
+        // UI will be updated by the onAuthStateChanged listener
+        showToast('Login successful!', 'success');
         
-        hideLogin();
-        
-        addNotification('success', 'Welcome!', `Welcome back to ${storeName}`);
-        showSection('dashboard');
     } catch (error) {
         console.error('Error logging in:', error);
         showToast('Login failed. Please try again.', 'error');
@@ -1933,53 +1928,53 @@ document.addEventListener('DOMContentLoaded', async function() {
         db = firebase.getFirestore(firebaseApp);
         auth = firebase.getAuth(firebaseApp);
 
-        document.getElementById('loadingOverlay').classList.remove('hidden');
-
-        await new Promise((resolve, reject) => {
-            firebase.onAuthStateChanged(auth, async (user) => {
-                if (user) {
-                    userId = user.uid;
-                    const userRef = firebase.doc(db, `artifacts/${appId}/users/${userId}`);
-                    const userDoc = await firebase.getDoc(userRef);
-                    
-                    if (userDoc.exists()) {
-                        currentUser = userDoc.data();
-                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                    }
-                    resolve();
+        // This promise and check at the end of the script were causing a race condition.
+        // We will now rely solely on the onAuthStateChanged listener to manage the UI flow.
+        
+        firebase.onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // User is signed in.
+                userId = user.uid;
+                const userRef = firebase.doc(db, `artifacts/${appId}/users/${userId}`);
+                const userDoc = await firebase.getDoc(userRef);
+                
+                if (userDoc.exists()) {
+                    // Existing user with store info, show main app.
+                    currentUser = userDoc.data();
+                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                    document.getElementById('headerStoreName').textContent = currentUser.storeName;
+                    hideLogin();
+                    showSection('dashboard');
+                    addNotification('info', 'System Ready', 'Kirana Store Manager is ready to use');
                 } else {
-                    if (initialAuthToken) {
-                        try {
-                            const userCredential = await firebase.signInWithCustomToken(auth, initialAuthToken);
-                            userId = userCredential.user.uid;
-                            resolve();
-                        } catch (error) {
-                            console.error("Error signing in with custom token:", error);
-                            // Fallback to anonymous sign-in if custom token fails
-                            await firebase.signInAnonymously(auth);
-                            userId = auth.currentUser.uid;
-                            resolve();
-                        }
-                    } else {
-                        await firebase.signInAnonymously(auth);
-                        userId = auth.currentUser.uid;
-                        resolve();
-                    }
+                    // New user, show login page to get store details.
+                    showLogin();
                 }
-            });
+            } else {
+                // User is not signed in.
+                // We will attempt to sign in anonymously or with a custom token.
+                if (initialAuthToken) {
+                    try {
+                        await firebase.signInWithCustomToken(auth, initialAuthToken);
+                    } catch (error) {
+                        console.error("Error signing in with custom token:", error);
+                        await firebase.signInAnonymously(auth);
+                    }
+                } else {
+                    await firebase.signInAnonymously(auth);
+                }
+                // The onAuthStateChanged listener will be triggered again with the new user.
+            }
         });
-
-        const savedUser = localStorage.getItem('currentUser');
-        if (savedUser) {
-            currentUser = JSON.parse(savedUser);
-            document.getElementById('headerStoreName').textContent = currentUser.storeName;
-            hideLogin();
-        } else {
-            showLogin();
-        }
+        
+        // This part of the code now runs outside of the auth check.
+        // It's for setting up event listeners and initial UI elements that don't
+        // depend on the user's logged-in state.
         
         initTheme();
         initVoiceRecognition();
+        updateConnectionStatus();
+        updateLanguage();
         
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
@@ -2216,12 +2211,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         updateConnectionStatus();
         updateLanguage();
 
-        if (currentUser) {
-            showSection('dashboard');
-            addNotification('info', 'System Ready', 'Kirana Store Manager is ready to use');
-        } else {
-            showSection('loginPage');
-        }
     } catch (error) {
         console.error('Error initializing app:', error);
         showToast('Error initializing app. Please refresh the page.', 'error');
