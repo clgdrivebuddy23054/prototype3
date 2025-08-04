@@ -611,6 +611,49 @@ a:hover {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
 }
 
+.login-form h3 {
+    text-align: center;
+    margin-bottom: var(--space-24);
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: var(--space-16) 0;
+    color: var(--color-text-secondary);
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.divider:not(:empty)::before {
+    margin-right: .5em;
+}
+
+.divider:not(:empty)::after {
+    margin-left: .5em;
+}
+
+.social-login {
+    display: flex;
+    gap: var(--space-8);
+}
+
+.social-btn {
+    flex: 1;
+}
+
+.auth-switch {
+    text-align: center;
+    margin-top: var(--space-16);
+    font-size: var(--font-size-sm);
+}
+
 /* Main App */
 .main-app {
   transition: opacity var(--duration-normal) var(--ease-standard);
