@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kirana Store Management System</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Header with theme toggle and voice -->
+    <header class="header">
+        <div class="header-content">
+            <h1 class="app-title">Kirana Store</h1>
+            <div class="header-actions">
+                <button id="voiceBtn" class="btn btn--secondary voice-btn">
+                    <span class="voice-icon">🎤</span>
+                    <span id="voiceStatus">Voice</span>
+                </button>
+                <button id="themeToggle" class="btn btn--secondary theme-btn">
+                    <span id="themeIcon">🌙</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Dashboard Tab -->
+        <div id="dashboard-tab" class="tab-content active">
+            <div class="dashboard-grid">
+                <div class="metric-card">
+                    <h3>Total Sales</h3>
+                    <div class="metric-value" id="totalSales">₹0</div>
+                    <div class="metric-change positive">+12% from last month</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Total Products</h3>
+                    <div class="metric-value" id="totalProducts">0</div>
+                    <div class="metric-change">Active inventory</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Total Customers</h3>
+                    <div class="metric-value" id="totalCustomers">0</div>
+                    <div class="metric-change">Registered users</div>
+                </div>
+                <div class="metric-card">
+                    <h3>Low Stock Items</h3>
+                    <div class="metric-value" id="lowStockItems">0</div>
+                    <div class="metric-change negative">Need restocking</div>
+                </div>
+            </div>
+
+            <div class="quick-actions">
+                <h3>Quick Actions</h3>
+                <div class="action-buttons">
+                    <button class="btn btn--primary" onclick="window.app && window.app.showModal('addSaleModal')">Add Sale</button>
+                    <button class="btn btn--primary" onclick="window.app && window.app.showModal('addProductModal')">Add Product</button>
+                    <button class="btn btn--primary" onclick="window.app && window.app.showModal('addCustomerModal')">Add Customer</button>
+                </div>
+            </div>
+
+            <div class="recent-activities">
+                <h3>Recent Activities</h3>
+                <div id="recentActivities" class="activity-list">
+                    <div class="empty-state">Loading recent activities...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Products Tab -->
+        <div id="products-tab" class="tab-content">
+            <div class="tab-header">
+                <h2>Products</h2>
+                <div class="tab-actions">
+                    <input type="text" id="productSearch" class="form-control search-input" placeholder="Search products...">
+                    <select id="categoryFilter" class="form-control">
+                        <option value="">All Categories</option>
+                    </select>
+                    <button class="btn btn--secondary" onclick="window.app && window.app.exportProducts()">Export</button>
+                    <button class="btn btn--primary" onclick="window.app && window.app.showModal('addProductModal')">Add Product</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Stock</th>
+                            <th>Unit</th>
+                            <th>Cost Price</th>
+                            <th>Selling Price</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTableBody">
+                        <tr><td colspan="7" class="empty-state">Loading products...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Sales Tab -->
+        <div id="sales-tab" class="tab-content">
+            <div class="tab-header">
+                <h2>Sales</h2>
+                <div class="tab-actions">
+                    <input type="text" id="salesSearch" class="form-control search-input" placeholder="Search sales...">
+                    <input type="date" id="salesDateFilter" class="form-control">
+                    <button class="btn btn--primary" onclick="window.app && window.app.showModal('addSaleModal')">Add Sale</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Product</th>
+                            <th>Customer</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                            <th>Total</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesTableBody">
+                        <tr><td colspan="7" class="empty-state">Loading sales...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Inventory Tab -->
+        <div id="inventory-tab" class="tab-content">
+            <div class="tab-header">
+                <h2>Inventory</h2>
+                <div class="tab-actions">
+                    <button class="btn btn--secondary" onclick="window.app && window.app.showBulkUpdateModal()">Bulk Update</button>
+                    <button class="btn btn--primary" onclick="window.app && window.app.showAddInventoryModal()">Update Stock</button>
+                </div>
+            </div>
+            <div class="inventory-stats">
+                <div class="stat-card">
+                    <h4>Total Items</h4>
+                    <span id="totalInventoryItems">0</span>
+                </div>
+                <div class="stat-card">
+                    <h4>Low Stock</h4>
+                    <span id="lowStockCount">0</span>
+                </div>
+                <div class="stat-card">
+                    <h4>Total Value</h4>
+                    <span id="totalInventoryValue">₹0</span>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Current Stock</th>
+                            <th>Min Stock</th>
+                            <th>Status</th>
+                            <th>Value</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody">
+                        <tr><td colspan="6" class="empty-state">Loading inventory...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Customers Tab -->
+        <div id="customers-tab" class="tab-content">
+            <div class="tab-header">
+                <h2>Customers</h2>
+                <div class="tab-actions">
+                    <input type="text" id="customerSearch" class="form-control search-input" placeholder="Search customers...">
+                    <button class="btn btn--primary" onclick="window.app && window.app.showModal('addCustomerModal')">Add Customer</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Total Purchases</th>
+                            <th>Loyalty Points</th>
+                            <th>Last Visit</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customersTableBody">
+                        <tr><td colspan="6" class="empty-state">Loading customers...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="analytics-tab" class="tab-content">
+            <div class="tab-header">
+                <h2>Analytics</h2>
+                <div class="tab-actions">
+                    <select id="chartTypeSelect" class="form-control">
+                        <option value="sales-by-product">Sales by Product</option>
+                        <option value="sales-trends">Sales Trends</option>
+                        <option value="inventory-levels">Inventory Levels</option>
+                        <option value="customer-purchases">Customer Purchases</option>
+                        <option value="low-stock-alerts">Low Stock Alerts</option>
+                    </select>
+                </div>
+            </div>
+            <div class="chart-container" style="position: relative; height: 400px;">
+                <canvas id="analyticsChart"></canvas>
+            </div>
+            <div id="chartInsights" class="chart-insights">
+                <div class="empty-state">Loading chart insights...</div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="tab-content">
+            <div class="tab-header">
+                <h2>Settings</h2>
+            </div>
+            <div class="settings-grid">
+                <div class="setting-group">
+                    <h3>Data Management</h3>
+                    <div class="setting-actions">
+                        <button class="btn btn--secondary" onclick="window.app && window.app.exportData()">Export Data</button>
+                        <button class="btn btn--secondary" onclick="window.app && window.app.showImportDataModal()">Import Data</button>
+                        <button class="btn btn--secondary" onclick="window.app && window.app.showRestoreDataModal()">Restore Data</button>
+                    </div>
+                </div>
+                <div class="setting-group">
+                    <h3>Store Information</h3>
+                    <form id="storeInfoForm" class="setting-form">
+                        <div class="form-group">
+                            <label class="form-label">Store Name</label>
+                            <input type="text" id="storeName" class="form-control" value="Kirana Store">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Owner Name</label>
+                            <input type="text" id="ownerName" class="form-control" value="Store Owner">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Phone</label>
+                            <input type="tel" id="storePhone" class="form-control" value="+91 9876543210">
+                        </div>
+                        <button type="submit" class="btn btn--primary">Save</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-item active" data-tab="dashboard">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">Dashboard</span>
+        </button>
+        <button class="nav-item" data-tab="products">
+            <span class="nav-icon">📦</span>
+            <span class="nav-label">Products</span>
+        </button>
+        <button class="nav-item" data-tab="sales">
+            <span class="nav-icon">💰</span>
+            <span class="nav-label">Sales</span>
+        </button>
+        <button class="nav-item" data-tab="inventory">
+            <span class="nav-icon">📋</span>
+            <span class="nav-label">Inventory</span>
+        </button>
+        <button class="nav-item" data-tab="customers">
+            <span class="nav-icon">👥</span>
+            <span class="nav-label">Customers</span>
+        </button>
+        <button class="nav-item" data-tab="analytics">
+            <span class="nav-icon">📈</span>
+            <span class="nav-label">Analytics</span>
+        </button>
+        <button class="nav-item" data-tab="settings">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-label">Settings</span>
+        </button>
+    </nav>
+
+    <!-- Modals -->
+    <!-- Add Product Modal -->
+    <div id="addProductModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Product</h3>
+                <button class="modal-close" onclick="window.app && window.app.hideModal('addProductModal')">&times;</button>
+            </div>
+            <form id="addProductForm">
+                <div class="form-group">
+                    <label class="form-label">Product Name</label>
+                    <input type="text" id="productName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select id="productCategory" class="form-control" required>
+                        <option value="">Select Category</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Initial Stock</label>
+                    <input type="number" id="productStock" class="form-control" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Minimum Stock</label>
+                    <input type="number" id="productMinStock" class="form-control" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Unit</label>
+                    <input type="text" id="productUnit" class="form-control" required placeholder="kg, L, pieces">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Cost Price (₹)</label>
+                    <input type="number" id="productCostPrice" class="form-control" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Selling Price (₹)</label>
+                    <input type="number" id="productSellingPrice" class="form-control" step="0.01" min="0" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--secondary" onclick="window.app && window.app.hideModal('addProductModal')">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Add Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Sale Modal -->
+    <div id="addSaleModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Sale</h3>
+                <button class="modal-close" onclick="window.app && window.app.hideModal('addSaleModal')">&times;</button>
+            </div>
+            <form id="addSaleForm">
+                <div class="form-group">
+                    <label class="form-label">Product</label>
+                    <select id="saleProduct" class="form-control" required>
+                        <option value="">Select Product</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Customer</label>
+                    <select id="saleCustomer" class="form-control" required>
+                        <option value="">Select Customer</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" id="saleQuantity" class="form-control" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Unit Price (₹)</label>
+                    <input type="number" id="saleUnitPrice" class="form-control" step="0.01" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Total Amount (₹)</label>
+                    <input type="number" id="saleTotalAmount" class="form-control" step="0.01" readonly>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--secondary" onclick="window.app && window.app.hideModal('addSaleModal')">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Add Sale</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Customer Modal -->
+    <div id="addCustomerModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Add Customer</h3>
+                <button class="modal-close" onclick="window.app && window.app.hideModal('addCustomerModal')">&times;</button>
+            </div>
+            <form id="addCustomerForm">
+                <div class="form-group">
+                    <label class="form-label">Customer Name</label>
+                    <input type="text" id="customerName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" id="customerPhone" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Address</label>
+                    <textarea id="customerAddress" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--secondary" onclick="window.app && window.app.hideModal('addCustomerModal')">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Add Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Customer History Modal -->
+    <div id="customerHistoryModal" class="modal hidden">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h3 id="customerHistoryTitle">Customer History</h3>
+                <button class="modal-close" onclick="window.app && window.app.hideModal('customerHistoryModal')">&times;</button>
+            </div>
+            <div class="customer-history-content">
+                <div id="customerHistoryDetails" class="customer-details"></div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Product</th>
+                                <th>Quantity</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customerHistoryTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Customer Modal -->
+    <div id="editCustomerModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Customer</h3>
+                <button class="modal-close" onclick="window.app && window.app.hideModal('editCustomerModal')">&times;</button>
+            </div>
+            <form id="editCustomerForm">
+                <input type="hidden" id="editCustomerId">
+                <div class="form-group">
+                    <label class="form-label">Customer Name</label>
+                    <input type="text" id="editCustomerName" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" id="editCustomerPhone" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Address</label>
+                    <textarea id="editCustomerAddress" class="form-control" rows="3"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--secondary" onclick="window.app && window.app.hideModal('editCustomerModal')">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Update Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Modal overlay -->
+    <div id="modalOverlay" class="modal-overlay hidden"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
